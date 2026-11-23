@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="de"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Stundenzettel</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light dark}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+:root{--bg:#f6f5f2;--card:#fff;--ink:#1d2330;--mut:#667;--line:#d9d6cf;--acc:#1f4e79;--neg:#b3261e;--pos:#1b6e3c}
+*{box-sizing:border-box}body{margin:0;font:15px/1.4 system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+main{max-width:980px;margin:0 auto;padding:12px}
+h1{font-size:20px;margin:6px 0 10px}h2{font-size:16px;margin:18px 0 8px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:end;margin-bottom:10px}
+label{display:flex;flex-direction:column;font-size:12px;color:var(--mut);gap:2px}
+input,select,button{font:inherit;padding:7px 8px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink)}
+button{cursor:pointer;background:var(--acc);color:#fff;border-color:var(--acc)}button.sec{background:var(--card);color:var(--acc)}
+table{width:100%;border-collapse:collapse;background:var(--card);font-variant-numeric:tabular-nums}
+th,td{border:1px solid var(--line);padding:3px 6px;text-align:right}th{background:#ecebe6;font-weight:600}
+td:first-child,th:first-child{text-align:left}td input{width:100%;padding:4px;border:0;text-align:center;background:transparent}
+tr.we td{background:#f1efe9}.neg{color:var(--neg)}.pos{color:var(--pos)}.sum td{font-weight:700;background:#ecebe6}
+.scroll{overflow-x:auto}.cur td{outline:2px solid var(--acc);outline-offset:-2px}
+.set{display:flex;gap:8px;flex-wrap:wrap}.set input{width:90px}
+.sr{background:var(--card);border:1px solid var(--line);margin-bottom:10px}.sr .it{display:flex;gap:10px;padding:8px;border-bottom:1px solid var(--line);cursor:pointer;flex-wrap:wrap}
+.sr .it:active,.sr .it:hover{background:#eef4fa}.sr .dt{min-width:150px;font-weight:600}.sr .sm{padding:6px 8px;font-size:12px;color:var(--mut)}.sr mark{background:#ffe38a}
+.flash td{outline:2px solid var(--acc);outline-offset:-2px}
+.hint{font-size:12px;color:var(--mut);margin:6px 0}
+body{font-family:Calibri,Carlito,system-ui,sans-serif}
+.sheet{background:var(--card);padding:10px;border:1px solid var(--line)}
+.ttl{text-align:center;color:#1F4E78;font-size:20px;margin:4px 0 12px}
+.hd{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:4px 10px;margin-bottom:10px;align-items:center}
+.hd input{border:1px solid var(--line);border-radius:6px;padding:6px 8px;width:100%}
+#days th{background:#D9EAF7;text-align:center;white-space:pre-line}#days td{text-align:center}
+#days tr.has td{background:#FFF9E6}#days td.bm{text-align:left}
+#days td input[type=text]{text-align:left}
+.tot td{background:#D9EAD3;font-weight:700;text-align:right!important}.tot td.v{text-align:center!important}
+.sig{display:flex;justify-content:space-between;margin-top:36px;text-align:center;font-size:12px}.sig div{width:40%;border-top:1px solid #000;padding-top:3px}
+@media screen and (prefers-color-scheme:dark){:root{--bg:#14171c;--card:#1d2128;--ink:#e8e8ea;--mut:#9aa3b0;--line:#3a4252;--acc:#5b9bd5;--neg:#ff8a80;--pos:#7fd49a}
+ button{color:#0b1520}button.sec{color:var(--acc)}th,.tot td{color:var(--ink)}th{background:#2a3342}#days th{background:#26405a}#days tr.has td{background:#3a3420}.tot td{background:#25402b}.ttl{color:#8ec1ee}tr.we td{background:#242932}.sr .it:active,.sr .it:hover{background:#26405a}.sr mark{background:#7a6420;color:#fff}}
+@media print{@page{size:A4 portrait;margin:10mm}.sheet{border:0;padding:0}.hd input{border:0;border-bottom:1px solid #999;border-radius:0;padding:2px 4px}#ys,#yh,details{display:none}#days td,#days th{padding:1px 4px;font-size:11px}.bar,.noprint,button{display:none!important}body{background:#fff}main{padding:0}td input{font-size:12px}}
+</style></head><body><main>
+<h1>Stundenzettel</h1>
+<div class="bar noprint">
+ <label>Jahr<select id="year"></select></label>
+ <label>Monat<select id="month"></select></label>
+ <button class="sec" id="prt">Drucken / PDF</button>
+ <button class="sec" id="csvm">Monat als Excel</button>
+ <button class="sec" id="csvy">Jahr als CSV</button>
+ <button class="sec" id="bak">Sichern</button>
+ <button class="sec" id="rest">Laden</button><input type="file" id="file" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
+</div>
+<div id="msg" class="noprint" role="status" style="display:none;margin:6px 0;padding:8px 10px;border:1px solid var(--acc);border-radius:6px;background:var(--card)"></div>
+<details class="noprint"><summary>Sätze und Anfangsübertrag</summary><div class="set" style="margin-top:8px">
+ <label>Grenze (Std/Monat)<input id="cap" type="number" step="0.01"></label>
+ <label>Satz bis Grenze (€)<input id="r1" type="number" step="0.01"></label>
+ <label>Satz darüber (€)<input id="r2" type="number" step="0.01"></label>
+ <label>Übertrag zum 1.1. (Std, ± )<input id="c0" type="number" step="0.01"></label></div></details>
+<div class="noprint"><label>Suche in allen Monaten (Bemerkung, Datum, Monat, Uhrzeit)<input id="q" type="search" placeholder="z. B. HU, Esee, Oktober, 14.10." autocomplete="off"></label><div id="qres" class="sr" hidden></div></div>
+<section class="sheet"><h1 class="ttl" id="ttl"></h1>
+<div class="hd"><b>Mitarbeiter</b><input id="name" placeholder="Name eintragen" autocomplete="name"><b>Firma</b><input id="firma">
+<b>Monat</b><span id="mt"></span><b>Abrechnung</b><span>monatlich</span>
+<b>Stundensatz</b><span id="rt"></span><b>Status</b><span>erstellt</span></div>
+<div class="scroll"><table id="days"></table></div>
+<div class="sig"><div>Datum / Unterschrift Arbeitnehmer</div><div>Datum / Unterschrift Arbeitgeber</div></div></section>
+<h2 id="yh">Jahresübersicht mit Übertrag</h2>
+<div class="scroll"><table id="ys"></table></div>
+<p class="hint">Übertrag = laufender Saldo aus (Ist − Grenze) je Monat, Januar bis Dezember. Stunden zu 12 € entstehen nur, wenn der Saldo ins Plus wächst; frühere Minusstunden werden zuerst ausgeglichen. Daten liegen nur in diesem Browser – regelmäßig „Sichern“ nutzen.</p>
+</main>
+<script>
+const KEY='stundenzettel-v1',MN=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'],WD=['So','Mo','Di','Mi','Do','Fr','Sa'];
+let S;try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+S=S||{};S.rates=S.rates||{cap:43,r1:13.9,r2:12};S.c0=S.c0||{};S.m=S.m||{};S.name=S.name||'';if(S.firma==null)S.firma='VPT GmbH';
+const $=id=>document.getElementById(id),save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+const now=new Date();let Y=now.getFullYear(),M=now.getMonth();
+const f2=n=>n.toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2}),
+ eur=n=>f2(n)+' €',sg=n=>(n>0?'+':'')+f2(n),cls=n=>n<-0.004?'neg':n>0.004?'pos':'';
+const mk=(y,m)=>y+'-'+String(m+1).padStart(2,'0'),dim=(y,m)=>new Date(y,m+1,0).getDate();
+const tm=t=>{const[a,b]=t.split(':').map(Number);return a*60+b};
+function hrs(r){if(!r||!r.s||!r.e)return 0;let d=tm(r.e)-tm(r.s);if(d<0)d+=1440;d-=Number(r.p)||0;return Math.max(0,d)/60}
+function mTotal(y,m){const o=S.m[mk(y,m)]||{};let t=0,has=false;for(const d in o){const h=hrs(o[d]);if(h>0)has=true;t+=h}return{t,has}}
+function year(y){const R=S.rates;let c=Number(S.c0[y])||0,pos=Math.max(0,c),out=[];
+ for(let m=0;m<12;m++){const{t,has}=mTotal(y,m);
+  if(!has){out.push({m,has,t:0,diff:0,saldo:c,h2:0,h1:0,eur:0});continue}
+  const diff=t-R.cap,saldo=c+diff,np=Math.max(0,saldo),h2=Math.max(0,np-pos),h1=t-h2;
+  out.push({m,has,t,diff,saldo,h2,h1,eur:h1*R.r1+h2*R.r2});c=saldo;pos=np}
+ return out}
+const WDL=['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'],hm=h=>{const m=Math.round(h*60);return Math.floor(m/60)+':'+String(m%60).padStart(2,'0')};
+function renderDays(){const k=mk(Y,M),o=S.m[k]=S.m[k]||{},n=dim(Y,M);
+ let h='<tr><th>Tag</th><th>Wochentag</th><th>von</th><th>bis</th><th>Pause (Min.)</th><th>Arbeitszeit\nabzüglich Pause</th><th>Tagesverdienst</th><th>Bemerkung</th></tr>';
+ for(let d=1;d<=n;d++){const r=o[d]||{},w=new Date(Y,M,d).getDay();
+  h+=`<tr id="r${d}"><td>${d}.</td><td>${WDL[w]}</td>`+['s','e'].map(f=>`<td><input type="time" data-d="${d}" data-f="${f}" value="${r[f]||''}"></td>`).join('')+
+  `<td><input type="number" min="0" step="5" data-d="${d}" data-f="p" value="${r.p||''}"></td><td id="h${d}"></td><td id="e${d}"></td><td class="bm"><input type="text" data-d="${d}" data-f="b" value="${(r.b||'').replace(/"/g,'&quot;')}"></td></tr>`}
+ h+='<tr class="tot"><td colspan="5">Gesamtarbeitszeit</td><td class="v" id="tot"></td><td></td><td></td></tr>'+
+ '<tr class="tot"><td colspan="5" id="l1"></td><td class="v" id="t1"></td><td></td><td></td></tr>'+
+ '<tr class="tot"><td colspan="5" id="l2"></td><td class="v" id="t2"></td><td></td><td></td></tr>'+
+ '<tr class="tot"><td colspan="5">Übertrag in nächsten Monat (Saldo)</td><td class="v" id="t3"></td><td></td><td></td></tr>'+
+ '<tr class="tot"><td colspan="6">Gesamtverdienst</td><td class="v" id="tev"></td><td></td></tr>';
+ $('days').innerHTML=h;sums()}
+function sums(){const R=S.rates,k=mk(Y,M),o=S.m[k]||{};
+ for(let d=1;d<=dim(Y,M);d++){const x=hrs(o[d]);$('h'+d).textContent=x?hm(x):'';$('e'+d).textContent=x?eur(x*R.r1):'';$('r'+d).className=x?'has':''}
+ const ym=year(Y)[M];$('tot').textContent=hm(mTotal(Y,M).t);
+ $('l1').textContent='Stunden à '+f2(R.r1)+' €';$('t1').textContent=hm(ym.h1);
+ $('l2').textContent='Stunden à '+f2(R.r2)+' €';$('t2').textContent=hm(ym.h2);
+ $('t3').textContent=sg(ym.saldo)+' Std';$('tev').textContent=eur(ym.eur);
+ $('ttl').textContent=($('firma').value?$('firma').value+' – ':'')+'Stundenzettel '+MN[M]+' '+Y;
+ $('mt').textContent=MN[M]+' '+Y;$('rt').textContent=eur(R.r1)+' (bis '+f2(R.cap)+' Std), '+eur(R.r2)+' darüber';renderYear()}
+function renderYear(){const R=S.rates,Ys=year(Y);
+ let h=`<tr><th>Monat</th><th>Ist Std</th><th>Soll (${f2(R.cap)})</th><th>Differenz</th><th>Übertrag (Saldo)</th><th>Std à ${f2(R.r1)} €</th><th>Std à ${f2(R.r2)} €</th><th>Betrag</th></tr>`;
+ let T={t:0,h1:0,h2:0,e:0};
+ Ys.forEach(r=>{if(!r.has){h+=`<tr><td>${MN[r.m]}</td><td colspan="3">–</td><td class="${cls(r.saldo)}">${sg(r.saldo)}</td><td colspan="3">–</td></tr>`;return}
+  T.t+=r.t;T.h1+=r.h1;T.h2+=r.h2;T.e+=r.eur;
+  h+=`<tr><td>${MN[r.m]}</td><td>${f2(r.t)}</td><td>${f2(R.cap)}</td><td class="${cls(r.diff)}">${sg(r.diff)}</td><td class="${cls(r.saldo)}"><b>${sg(r.saldo)}</b></td><td>${f2(r.h1)}</td><td>${f2(r.h2)}</td><td>${eur(r.eur)}</td></tr>`});
+ h+=`<tr class="sum"><td>Jahr</td><td>${f2(T.t)}</td><td></td><td></td><td></td><td>${f2(T.h1)}</td><td>${f2(T.h2)}</td><td>${eur(T.e)}</td></tr>`;$('ys').innerHTML=h}
+async function dl(name,text,type){let d=null;try{d=window.claude&&await window.claude.use('downloads')}catch(e){}
+ if(d){try{await d.save({filename:name.replace(/\.xls$/,'.html'),data:text})}catch(e){if(e&&e.code&&e.code!=='declined')note('Speichern nicht möglich ('+e.code+')')}return}
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click()}
+const csv=rows=>'\ufeff'+rows.map(r=>r.join(';')).join('\r\n');
+function init(){const ys=$('year');for(let y=Y-3;y<=Y+2;y++)ys.add(new Option(y,y,0,y==Y));
+ MN.forEach((m,i)=>$('month').add(new Option(m,i,0,i==M)));
+ $('name').value=S.name;$('firma').value=S.firma;$('firma').oninput=e=>{S.firma=e.target.value;save();sums()};$('cap').value=S.rates.cap;$('r1').value=S.rates.r1;$('r2').value=S.rates.r2;$('c0').value=S.c0[Y]||0;
+ ys.onchange=()=>{Y=+ys.value;$('c0').value=S.c0[Y]||0;renderDays()};$('month').onchange=e=>{M=+e.target.value;renderDays()};
+ $('name').oninput=e=>{S.name=e.target.value;save()};
+ [['cap','cap'],['r1','r1'],['r2','r2']].forEach(([i,k])=>$(i).onchange=e=>{S.rates[k]=Number(e.target.value)||0;save();sums()});
+ $('c0').onchange=e=>{S.c0[Y]=Number(e.target.value)||0;save();sums()};
+ const ch=e=>{const t=e.target,d=t.dataset.d;if(!d)return;const o=S.m[mk(Y,M)];(o[d]=o[d]||{})[t.dataset.f]=t.value;save();sums()};
+ $('days').addEventListener('input',ch);$('days').addEventListener('change',ch);$('days').addEventListener('blur',ch,true);
+ $('prt').onclick=()=>print();
+ $('csvm').onclick=()=>{const R=S.rates,o=S.m[mk(Y,M)]||{},ym=year(Y)[M],E=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const th='style="background:#D9EAF7;font-weight:bold;text-align:center;border:1px solid #999"',tc='style="text-align:center;border:1px solid #999',tt='style="background:#D9EAD3;font-weight:bold;border:1px solid #999';
+  let h=`<table style="font-family:Calibri;font-size:11pt"><tr><td colspan="8" style="font-size:16pt;font-weight:bold;color:#1F4E78;text-align:center">${E(($('firma').value?$('firma').value+' – ':'')+'Stundenzettel '+MN[M]+' '+Y)}</td></tr><tr></tr>`+
+  `<tr><td><b>Mitarbeiter</b></td><td>${E(S.name)}</td><td></td><td></td><td><b>Firma</b></td><td>${E(S.firma)}</td></tr><tr><td><b>Monat</b></td><td>${MN[M]} ${Y}</td><td></td><td></td><td><b>Abrechnung</b></td><td>monatlich</td></tr><tr><td><b>Stundensatz</b></td><td>${f2(R.r1)} €</td><td></td><td></td><td><b>Status</b></td><td>erstellt</td></tr><tr></tr>`+
+  `<tr>${['Tag','Wochentag','von','bis','Pause (Min.)','Arbeitszeit abzüglich Pause','Tagesverdienst','Bemerkung'].map(t=>`<td ${th}>${t}</td>`).join('')}</tr>`;
+  for(let d=1;d<=dim(Y,M);d++){const r=o[d]||{},x=hrs(r),bg=x?';background:#FFF9E6':'';
+   h+=`<tr><td ${tc}${bg}">${d}.</td><td ${tc}${bg}">${WDL[new Date(Y,M,d).getDay()]}</td><td ${tc}${bg}">${r.s||''}</td><td ${tc}${bg}">${r.e||''}</td><td ${tc}${bg}">${r.p||''}</td><td ${tc}${bg}">${x?hm(x):''}</td><td ${tc}${bg}">${x?f2(x*R.r1)+' €':''}</td><td style="border:1px solid #999${bg}">${E(r.b||'')}</td></tr>`}
+  const L=(t,v)=>`<tr><td colspan="5" ${tt};text-align:right">${t}</td><td ${tt};text-align:center">${v}</td><td ${tt}"></td><td ${tt}"></td></tr>`;
+  h+=`<tr></tr>`+L('Gesamtarbeitszeit',hm(mTotal(Y,M).t))+L('Stunden à '+f2(R.r1)+' €',hm(ym.h1))+L('Stunden à '+f2(R.r2)+' €',hm(ym.h2))+L('Übertrag in nächsten Monat (Saldo)',sg(ym.saldo)+' Std')+L('Gesamtverdienst',f2(ym.eur)+' €')+
+  `<tr></tr><tr></tr><tr><td colspan="3" style="text-align:center">______________________________</td><td></td><td></td><td colspan="3" style="text-align:center">______________________________</td></tr><tr><td colspan="3" style="text-align:center;font-size:9pt">Datum / Unterschrift Arbeitnehmer</td><td></td><td></td><td colspan="3" style="text-align:center;font-size:9pt">Datum / Unterschrift Arbeitgeber</td></tr></table>`;
+  dl(`Stundenzettel_${MN[M]}_${Y}.xls`,'<html><head><meta charset="utf-8"></head><body>'+h+'</body></html>','application/vnd.ms-excel')};
+ $('csvy').onclick=()=>{const R=S.rates,rows=[['Monat','Ist','Soll','Differenz','Übertrag',`Std ${f2(R.r1)}`,`Std ${f2(R.r2)}`,'Betrag EUR']];
+  year(Y).forEach(r=>rows.push(r.has?[MN[r.m],f2(r.t),f2(R.cap),f2(r.diff),f2(r.saldo),f2(r.h1),f2(r.h2),f2(r.eur)]:[MN[r.m],'','','',f2(r.saldo),'','','']));
+  dl(`stundenzettel-jahr-${Y}.csv`,csv(rows),'text/csv')};
+ $('bak').onclick=()=>dl('stundenzettel-backup.json',JSON.stringify(S),'application/json');
+ $('rest').onclick=()=>{$('file').value='';$('file').click()};
+ $('file').onchange=e=>{const f=e.target.files[0];if(!f)return;const fr=new FileReader();
+  fr.onerror=()=>note('Datei konnte nicht gelesen werden.');
+  fr.onload=()=>{try{const o=JSON.parse(String(fr.result).replace(/^\ufeff/,''));if(!o||typeof o!=='object'||!o.m)throw 0;
+   S=o;S.rates=S.rates||{cap:43,r1:13.9,r2:12};S.c0=S.c0||{};S.name=S.name||'';if(S.firma==null)S.firma='';save();
+   $('name').value=S.name;$('firma').value=S.firma;$('cap').value=S.rates.cap;$('r1').value=S.rates.r1;$('r2').value=S.rates.r2;$('c0').value=S.c0[Y]||0;
+   let n=0,k=0;for(const a in S.m){let c=0;for(const d in S.m[a])if(hrs(S.m[a][d])>0||S.m[a][d].b)c++;if(c){k++;n+=c}}
+   const ks=Object.keys(S.m).filter(a=>Object.values(S.m[a]).some(r=>hrs(r)>0||r.b)).sort(),last=ks[ks.length-1];
+   if(last){const[ly,lm]=last.split('-').map(Number);Y=ly;M=lm-1;const ys=$('year');if(![...ys.options].some(o=>+o.value==Y))ys.add(new Option(Y,Y));ys.value=Y;$('month').value=M;$('c0').value=S.c0[Y]||0}
+   renderDays();$('q').value='';search();note('Geladen: '+n+' Tage in '+k+' Monat(en). Angezeigt: '+MN[M]+' '+Y+'.')}catch(x){note('Das ist keine gültige Stundenzettel-Sicherung.')}};
+  fr.readAsText(f)};
+ $('q').oninput=search;$('qres').onclick=e=>{const t=e.target.closest('.it');if(!t)return;jump(+t.dataset.y,+t.dataset.m,+t.dataset.d)};
+ renderDays()}
+function note(t){const m=$('msg');m.textContent=t;m.style.display='block';clearTimeout(note.t);note.t=setTimeout(()=>m.style.display='none',12000)}
+const esc=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+function search(){const q=$('q').value.trim().toLowerCase(),box=$('qres');if(!q){box.hidden=true;box.innerHTML='';return}
+ const ws=q.split(/\s+/),res=[];
+ for(const k in S.m){const[y,m]=k.split('-').map(Number);for(const d in S.m[k]){const r=S.m[k][d];if(!hrs(r)&&!r.b)continue;
+  const dt=new Date(y,m-1,+d),hay=[(+d)+'.'+m+'.'+y,String(d).padStart(2,'0')+'.'+String(m).padStart(2,'0')+'.'+y,WDL[dt.getDay()],MN[m-1],y,r.b||'',r.s||'',r.e||''].join(' ').toLowerCase();
+  if(ws.every(w=>hay.includes(w)))res.push({y,m:m-1,d:+d,r,t:dt})}}
+ res.sort((a,b)=>b.t-a.t);const tot=res.reduce((a,x)=>a+hrs(x.r),0);
+ const hl=t=>{t=String(t);const lo=t.toLowerCase(),f=new Array(t.length).fill(0);ws.forEach(w=>{let i=lo.indexOf(w);while(w&&i>=0){for(let j=i;j<i+w.length;j++)f[j]=1;i=lo.indexOf(w,i+1)}});let o='',on=0;for(let i=0;i<t.length;i++){if(f[i]&&!on){o+='<mark>';on=1}if(!f[i]&&on){o+='</mark>';on=0}o+=esc(t[i])}return o+(on?'</mark>':'')};
+ box.hidden=false;box.innerHTML=res.length?res.slice(0,200).map(x=>`<div class="it" data-y="${x.y}" data-m="${x.m}" data-d="${x.d}"><span class="dt">${WDL[x.t.getDay()].slice(0,2)}, ${x.d}.${x.m+1}.${x.y}</span><span>${x.r.s||''}–${x.r.e||''} (${hrs(x.r)?hm(hrs(x.r)):'–'})</span><span>${hl(x.r.b||'')}</span></div>`).join('')+`<div class="sm">${res.length} Treffer · zusammen ${hm(tot)} Std${res.length>200?' · nur die neuesten 200 angezeigt':''}</div>`:'<div class="sm">Keine Treffer</div>'}
+function jump(y,m,d){Y=y;M=m;const ys=$('year');if(![...ys.options].some(o=>+o.value==y))ys.add(new Option(y,y));ys.value=y;$('month').value=m;$('c0').value=S.c0[Y]||0;renderDays();
+ const r=$('r'+d);if(r){r.classList.add('flash');r.scrollIntoView({block:'center'});setTimeout(()=>r.classList.remove('flash'),2500)}}
+init();
+</script></body></html>
